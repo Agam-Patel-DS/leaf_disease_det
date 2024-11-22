@@ -41,7 +41,7 @@ class preprocess:
                                                              height_shift_range = 0.2,
                                                              fill_mode="nearest")
 
-    test_datagen = keras.preprocessing.image.ImageDataGenerator(rescale = self.rescale)
+    test_datagen = keras.preprocessing.image.ImageDataGenerator(rescale = 1./255)
 
     train_data = train_datagen.flow_from_directory(self.train,
                                                target_size = (self.image_size, self.image_size),
@@ -53,12 +53,15 @@ class preprocess:
                                               batch_size = self.batch_size,
                                               class_mode = self.class_mode)
     
+    categories = list(train_data.class_indices.keys())
+    print(train_data.class_indices)
+
     class_indices_path=self.class_indices_path
 
     with open(class_indices_path,'w') as f:
       json.dump(train_data.class_indices, f)
 
     print(f"The data is preprocessed and the class indices is saved at {class_indices_path}")
-
+    return categories, train_data, test_data
 
 
