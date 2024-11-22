@@ -1,0 +1,7 @@
+mlflow
+dvc
+tensorflow
+pandas
+numpy
+keras
+yaml
