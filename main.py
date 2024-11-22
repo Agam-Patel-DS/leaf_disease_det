@@ -19,4 +19,3 @@ train_cfg=train_config(train_params)
 train_data=train(train_cfg,categories,train_data,test_data)
 model,validation_accuracy=train_data.train_model()
 train_data.save_model(model,train_params["save_dir"],validation_accuracy)
-

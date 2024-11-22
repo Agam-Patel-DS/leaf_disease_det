@@ -18,5 +18,7 @@ train:
   image_size: 224
   save_dir: model/
 
-
+prediction:
+  model: model/mobile_net_50_9612.h5
+  class_indices: class_indices.json
   
