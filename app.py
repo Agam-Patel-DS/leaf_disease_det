@@ -5,6 +5,18 @@ import numpy as np
 import os
 import yaml
 import streamlit as st
+from langchain_community.document_loaders.onedrive_file import CHUNK_SIZE
+from langchain_groq import ChatGroq
+#from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains import create_retrieval_chain
+from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from dotenv import load_dotenv
+load_dotenv()
 
 st.set_page_config(
     page_title="Leaf Disease Detection",  # App name in the browser tab
@@ -23,9 +35,6 @@ pred=predict(config)
 
 from PIL import Image
 
-
-
-st.title("Leaf Disease Detection")
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Overview", "Special Features", "Detect", "AI Chat", "Models Used", "Contributors"])
 with tab1:
@@ -109,7 +118,12 @@ with tab3:
         # Display the uploaded image
         st.image(image, caption="Uploaded Image", use_column_width=True)
         st.success("Image uploaded successfully!")
-        disease=pred.predict_image(image)
+        options = ['Best Model', 'Mobile_Net', 'Resnet', 'Inceptionnet', 'Densenet']
+
+        # Create a dropdown with a default value (index 1 means 'Option 2' will be selected by default)
+        selected_option = st.selectbox("Select an option", options, index=1)
+        image = Image.open(image)
+        disease=pred.predict_image(image,selected_option)
         if st.button("Predict"):
             st.warning(f"The Disease is :")
             st.markdown(f"###### {disease}")
@@ -167,9 +181,53 @@ with tab4:
         height=150,  # Adjust height for larger input area
         placeholder="Type or paste your question here..."
     )
+    embeddings=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+    os.environ["GROQ_API_KEY"]=os.getenv("GROQ_API_KEY")
+    groq_api_key=os.getenv("GROQ_API_KEY")
+
+    llm=ChatGroq(groq_api_key=groq_api_key, model_name="Llama3-8b-8192")
+
+    prompt=ChatPromptTemplate.from_template(
+      """
+      You are an expert leaf disease recognition system. Asnwer the questions 
+      in a helpful way based on the provided context only.
+      Please provide the most accurate response based on the question.
+      <context>
+      {context}
+      <context>
+      Question:{input}
+      """
+    )
+
+    def create_vector_embeddings():
+      if "vectors" not in st.session_state:
+        st.session_state.embeddings=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        st.session_state.loader=PyPDFDirectoryLoader("pdfs") #Data Ingestion
+        st.session_state.docs=st.session_state.loader.load() #Document Loading
+        st.session_state.text_splitter=RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        st.session_state.final_documents=st.session_state.text_splitter.split_documents(st.session_state.docs[:50])
+        st.session_state.vectors=FAISS.from_documents(st.session_state.final_documents, st.session_state.embeddings)
+
+    user_prompt=user_input
+    
+    st.warning("Wait for the Vector Embeddings: Send Button will come after finishing.")
+    create_vector_embeddings()
+
+    import time
+
+ 
+      
 
     if st.button("Send"):
-        st.write(f"Your Question will be answered. Your Question: {user_input}")
+      if user_prompt:
+        document_chain=create_stuff_documents_chain(llm, prompt)
+        retriever=st.session_state.vectors.as_retriever()
+        retriever_chain=create_retrieval_chain(retriever, document_chain)
+        start=time.process_time()
+        response=retriever_chain.invoke({"input":user_prompt})
+        print(f"Response time = {time.process_time()-start}")
+        st.write(response["answer"])
 
     st.markdown("---")
     st.markdown("""<p style='text-align: center;'><b>Copyrights</b> @ Agam Patel, Aman Agnihotri, Anushri Tiwari</p>""", unsafe_allow_html=True)
@@ -187,7 +245,7 @@ with tab5:
     """)
     
     # Add MobileNet Architecture Image
-    st.image("Linkedin Banner.png", caption="MobileNet Architecture", use_column_width=True)
+    #st.image("Linkedin Banner.png", caption="MobileNet Architecture", use_column_width=True)
 
     # ResNet Model
     st.subheader("ResNet - Accuracy: 84%")
@@ -198,7 +256,7 @@ with tab5:
     """)
     
     # Add ResNet Architecture Image
-    st.image("Linkedin Banner.png", caption="ResNet Architecture", use_column_width=True)
+    #st.image("Linkedin Banner.png", caption="ResNet Architecture", use_column_width=True)
 
     # DenseNet Model
     st.subheader("DenseNet - Accuracy: 93%")
@@ -209,66 +267,66 @@ with tab5:
     """)
     
     # Add DenseNet Architecture Image
-    st.image("Linkedin Banner.png", caption="DenseNet Architecture", use_column_width=True)
+    #st.image("Linkedin Banner.png", caption="DenseNet Architecture", use_column_width=True)
 
     st.markdown("---")
     st.markdown("""<p style='text-align: center;'><b>Copyrights</b> @ Agam Patel, Aman Agnihotri, Anushri Tiwari</p>""", unsafe_allow_html=True)
 
 
 
-with tab6:
-    st.header("Contributors to the Leaf Disease Detection Project")
+# with tab6:
+#     st.header("Contributors to the Leaf Disease Detection Project")
     
-    # Contributor 1: Alice
-    col1, col2 = st.columns([3, 2])  # Create two columns with a ratio of 3:2
+#     # Contributor 1: Alice
+#     col1, col2 = st.columns([3, 2])  # Create two columns with a ratio of 3:2
     
-    with col1:
-        st.subheader("Agam Patel - Project Lead & Data Scientist")
-        st.write("""
-            Agam led the project and was responsible for collecting and preprocessing the dataset. 
-            He also trained the models (MobileNet, ResNet, DenseNet) and optimized their performance. 
-            Agam's efforts ensured that the models performed at a high accuracy, providing reliable results for disease detection.
-        """)
-        st.markdown("[LinkedIn Profile](https://www.linkedin.com/in/alice-profile/)")  # Replace with actual link
-    
-    
-    with col2:
-        image = Image.open("person.jpg")  # Replace with the correct path for the image
-        st.image(image, caption="Agam Patel", use_column_width=True)
-    
-    # Contributor 2: Bob
-    col1, col2 = st.columns([3, 2])  # Create two columns with a ratio of 3:2
-    
-    with col1:
-        st.subheader("Aman Agnihotri - Full Stack Developer")
-        st.write("""
-            Aman developed the Streamlit app and the user interface. He integrated the models into the app 
-            and ensured that users could easily upload images and view predictions. Aman also worked on making 
-            the app intuitive and user-friendly.
-        """)
-        st.markdown("[LinkedIn Profile](https://www.linkedin.com/in/alice-profile/)")  # Replace with actual link
+#     with col1:
+#         st.subheader("Agam Patel - Project Lead & Data Scientist")
+#         st.write("""
+#             Agam led the project and was responsible for collecting and preprocessing the dataset. 
+#             He also trained the models (MobileNet, ResNet, DenseNet) and optimized their performance. 
+#             Agam's efforts ensured that the models performed at a high accuracy, providing reliable results for disease detection.
+#         """)
+#         st.markdown("[LinkedIn Profile](https://www.linkedin.com/in/alice-profile/)")  # Replace with actual link
     
     
-    with col2:
-        image = Image.open("person.jpg")  # Replace with the correct path for the image
-        st.image(image, caption="Bob", use_column_width=True)
+#     with col2:
+#         image = Image.open("person.jpg")  # Replace with the correct path for the image
+#         st.image(image, caption="Agam Patel", use_column_width=True)
     
-    # Contributor 3: Claire
-    col1, col2 = st.columns([3, 2])  # Create two columns with a ratio of 3:2
+#     # Contributor 2: Bob
+#     col1, col2 = st.columns([3, 2])  # Create two columns with a ratio of 3:2
     
-    with col1:
-        st.subheader("Anushri Tiwari - Research & Model Development")
-        st.write("""
-            Anushri was responsible for researching and selecting the best model architectures for this project. 
-            She fine-tuned the models to improve their accuracy and ensured that the models could handle 
-            various types of leaf disease images effectively.
-        """)
-        st.markdown("[LinkedIn Profile](https://www.linkedin.com/in/alice-profile/)")  # Replace with actual link
+#     with col1:
+#         st.subheader("Aman Agnihotri - Full Stack Developer")
+#         st.write("""
+#             Aman developed the Streamlit app and the user interface. He integrated the models into the app 
+#             and ensured that users could easily upload images and view predictions. Aman also worked on making 
+#             the app intuitive and user-friendly.
+#         """)
+#         st.markdown("[LinkedIn Profile](https://www.linkedin.com/in/alice-profile/)")  # Replace with actual link
     
-    with col2:
-        image = Image.open("person.jpg")  # Replace with the correct path for the image
-        st.image(image, caption="Claire", use_column_width=True)
+    
+#     with col2:
+#         image = Image.open("person.jpg")  # Replace with the correct path for the image
+#         st.image(image, caption="Bob", use_column_width=True)
+    
+#     # Contributor 3: Claire
+#     col1, col2 = st.columns([3, 2])  # Create two columns with a ratio of 3:2
+    
+#     with col1:
+#         st.subheader("Anushri Tiwari - Research & Model Development")
+#         st.write("""
+#             Anushri was responsible for researching and selecting the best model architectures for this project. 
+#             She fine-tuned the models to improve their accuracy and ensured that the models could handle 
+#             various types of leaf disease images effectively.
+#         """)
+#         st.markdown("[LinkedIn Profile](https://www.linkedin.com/in/alice-profile/)")  # Replace with actual link
+    
+#     with col2:
+#         image = Image.open("person.jpg")  # Replace with the correct path for the image
+#         st.image(image, caption="Claire", use_column_width=True)
 
 
-    st.markdown("---")
-    st.markdown("""<p style='text-align: center;'><b>Copyrights</b> @ Agam Patel, Aman Agnihotri, Anushri Tiwari</p>""", unsafe_allow_html=True)
+#     st.markdown("---")
+#     st.markdown("""<p style='text-align: center;'><b>Copyrights</b> @ Agam Patel, Aman Agnihotri, Anushri Tiwari</p>""", unsafe_allow_html=True)
