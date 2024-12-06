@@ -118,10 +118,6 @@ with tab3:
         # Display the uploaded image
         st.image(image, caption="Uploaded Image", use_column_width=True)
         st.success("Image uploaded successfully!")
-        options = ['Best Model', 'Mobile_Net', 'Resnet', 'Inceptionnet', 'Densenet']
-
-        # Create a dropdown with a default value (index 1 means 'Option 2' will be selected by default)
-        selected_option = st.selectbox("Select an option", options, index=1)
         image = Image.open(image)
         disease=pred.predict_image(image,selected_option)
         if st.button("Predict"):
