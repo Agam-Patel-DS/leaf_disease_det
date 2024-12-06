@@ -41,20 +41,7 @@ class predict:
         image = image / 255.0  # Normalize image to [0, 1]
         image = np.expand_dims(image, axis=0)  # Add batch dimension
         model_path=self.model
-        if selected_model == 'Best Model':
-            model_path=self.model
-            # Code to run Model 1
-            
-            # Code to run Model 2
-        elif selected_model == 'Resnet':
-           model_path=self.model2
-            # Code to run Model 3
-        elif selected_model == 'Inceptionnet':
-           model_path=self.model3
-
-        elif selected_model == 'Densenet':
-           model_path=self.model4 
-            # Code to run Model 4
+       
         # Load the TFLite model
         interpreter = tf.lite.Interpreter(model_path=model_path)
         interpreter.allocate_tensors()
