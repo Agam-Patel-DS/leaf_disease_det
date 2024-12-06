@@ -19,6 +19,6 @@ train:
   save_dir: model/
 
 prediction:
-  model: model/mobile_net_50_9612.h5
+  model: new_models/mobile_net.tflite
   class_indices: class_indices.json
   
